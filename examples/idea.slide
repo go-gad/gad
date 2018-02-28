@@ -1,0 +1,60 @@
+go-gad
+Toolkit for web applications
+28 Feb 2018
+Tags: gad, toolkit
+
+Zaur Abasmirzoev
+i@zaur.io
+
+
+* Business logic
+
+Your service is described as:
+
+.code idea1/main.go /START-Service OMIT/,/END-Service OMIT/
+
+* HTTP Handler
+
+- You want to call service from an http handler
+- You need an abstraction between the transport layer and the service
+
+    func handler(w http.ResponseWriter, r *http.Request) {
+
+        // decode http request to custom value
+    	name := decode(r)
+
+    	// call service with custom signature
+    	id, err := CreateUser(name)
+
+    	// encode custom data to response writer
+    	encode(w, id)
+
+    }
+
+* Solution based on go-kit
+
+You can use abstraction called an endpoint in [[https://github.com/go-kit/kit][go-kit]].
+It's really a powerful library for micro services.
+
+https://github.com/go-kit/kit
+
+* Too much interfaces
+
+    func decodeUppercaseRequest(_ context.Context, r *http.Request) (interface{}, error) {
+        var request uppercaseRequest
+        json.NewDecoder(r.Body).Decode(&request); err != nil {
+        return request, nil
+    }
+
+    func makeUppercaseEndpoint(svc StringService) endpoint.Endpoint {
+        return func(ctx context.Context, request interface{}) (interface{}, error) {
+            req := request.(uppercaseRequest)
+            v, err := svc.Uppercase(ctx, req.S)
+            return uppercaseResponse{v, ""}, nil
+        }
+    }
+
+
+    func encodeResponse(_ context.Context, w http.ResponseWriter, response interface{}) error {
+    	return json.NewEncoder(w).Encode(response)
+    }
