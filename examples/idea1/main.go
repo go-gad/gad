@@ -33,6 +33,7 @@ func main() {
 	}
 }
 
+//START-Service OMIT
 // step 1.1
 type UserService interface {
 	CreateUser(string) (int, error)
@@ -46,6 +47,8 @@ func (s *service) CreateUser(name string) (int, error) {
 	log.Println("called CreateUser method of service")
 	return 100500, nil
 }
+
+//END-Service OMIT
 
 // step 2.1
 type CreateUserRequest struct {
