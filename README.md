@@ -1,2 +1,2 @@
 # gad
-Toolkit for developing web applications
+Toolkit for developing web applications.
