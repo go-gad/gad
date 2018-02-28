@@ -39,6 +39,31 @@ type ServiceResponseFunc func(_ context.Context, response interface{})
 
 type HandlerResponseFunc func(context.Context, http.ResponseWriter) context.Context
 
+type HookOption func(*Hooks)
+
+type Hooks struct {
+	beforeH []HanlderRequestFunc
+	beforeS []ServiceRequestFunc
+	afterS  []ServiceResponseFunc
+	afterH  []HandlerResponseFunc
+}
+
+func HandlerBefore(hooks ...HanlderRequestFunc) HookOption {
+	return func(h *Hooks) { h.beforeH = append(h.beforeH, hooks...) }
+}
+
+func ServiceBefore(hooks ...ServiceRequestFunc) HookOption {
+	return func(h *Hooks) { h.beforeS = append(h.beforeS, hooks...) }
+}
+
+func ServiceAfter(hooks ...ServiceResponseFunc) HookOption {
+	return func(h *Hooks) { h.afterS = append(h.afterS, hooks...) }
+}
+
+func HandlerAfter(hooks ...HandlerResponseFunc) HookOption {
+	return func(h *Hooks) { h.afterH = append(h.afterH, hooks...) }
+}
+
 // <<< step 1.1
 
 type UserService interface {
@@ -82,10 +107,7 @@ type createUserHandler struct {
 	dec         DecodeCreateUserRequestFunc
 	enc         EncodeCreateUserResponseFunc
 	serviceWrap CreateUserServiceWrapperFunc
-	beforeH     []HanlderRequestFunc
-	beforeS     []ServiceRequestFunc
-	afterS      []ServiceResponseFunc
-	afterH      []HandlerResponseFunc
+	hooks       *Hooks
 }
 
 func (h createUserHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -114,11 +136,16 @@ func NewCreateUserHandler(
 	serviceWrap CreateUserServiceWrapperFunc,
 	dec DecodeCreateUserRequestFunc,
 	enc EncodeCreateUserResponseFunc,
+	options ...HookOption,
 ) *createUserHandler {
 	h := &createUserHandler{
 		serviceWrap: serviceWrap,
 		dec:         dec,
 		enc:         enc,
+		hooks:       &Hooks{},
+	}
+	for _, opt := range options {
+		opt(h.hooks)
 	}
 	return h
 }
