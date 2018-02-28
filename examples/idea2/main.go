@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"time"
 )
 
 func main() {
@@ -16,6 +17,7 @@ func main() {
 		MakeCreateUserServiceWrapper(s),
 		decodeCreateUserRequest,
 		encodeCreateUserResponse,
+		HandlerBefore(Logger), // step 3.1
 	)
 
 	srv := &http.Server{
@@ -29,6 +31,21 @@ func main() {
 		log.Fatal(err)
 	}
 }
+
+// >>> step 2.1
+func Logger(ctx context.Context, r *http.Request) (context.Context, HandlerResponseFunc) {
+	start := time.Now()
+	log.Printf("start process request %s %s", r.Method, r.RequestURI)
+
+	f := func(ctx context.Context, w http.ResponseWriter) context.Context {
+		log.Printf("request %s %s tooks %v", r.Method, r.RequestURI, time.Since(start))
+		return ctx
+	}
+
+	return ctx, f
+}
+
+// <<< step 2.1
 
 // >>> step 1.1
 type HanlderRequestFunc func(context.Context, *http.Request) (context.Context, HandlerResponseFunc)
@@ -113,6 +130,15 @@ type createUserHandler struct {
 func (h createUserHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
+	// step 1.2
+	for _, f := range h.hooks.beforeH {
+		var after HandlerResponseFunc
+		ctx, after = f(ctx, r)
+		if after != nil {
+			HandlerAfter(after)(h.hooks)
+		}
+	}
+
 	request, err := h.dec(ctx, r)
 	if err != nil {
 		// write to w
@@ -123,6 +149,11 @@ func (h createUserHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		// write to w
 		return
+	}
+
+	// step 1.3
+	for _, f := range h.hooks.afterH {
+		ctx = f(ctx, w)
 	}
 
 	err = h.enc(ctx, w, response)
