@@ -18,6 +18,7 @@ func main() {
 		decodeCreateUserRequest,
 		encodeCreateUserResponse,
 		HandlerBefore(Logger), // step 3.1
+		ServiceBefore(Auth),   // step 3.2
 	)
 
 	srv := &http.Server{
@@ -32,7 +33,7 @@ func main() {
 	}
 }
 
-// >>> step 2.1
+// step 2.1
 func Logger(ctx context.Context, r *http.Request) (context.Context, HandlerResponseFunc) {
 	start := time.Now()
 	log.Printf("start process request %s %s", r.Method, r.RequestURI)
@@ -45,14 +46,28 @@ func Logger(ctx context.Context, r *http.Request) (context.Context, HandlerRespo
 	return ctx, f
 }
 
-// <<< step 2.1
+// step 2.2
+func Auth(ctx context.Context, request interface{}) (context.Context, ServiceResponseFunc) {
+	// do smth with request
+	log.Println("authorize request")
+	user := "Ivan"
+
+	f := func(ctx context.Context, response interface{}) context.Context {
+		// do smth with response
+		// use variables from after hook scope
+		log.Printf("User `%s` finished work", user)
+		return ctx
+	}
+
+	return ctx, f
+}
 
 // >>> step 1.1
 type HanlderRequestFunc func(context.Context, *http.Request) (context.Context, HandlerResponseFunc)
 
 type ServiceRequestFunc func(_ context.Context, request interface{}) (context.Context, ServiceResponseFunc)
 
-type ServiceResponseFunc func(_ context.Context, response interface{})
+type ServiceResponseFunc func(_ context.Context, response interface{}) context.Context
 
 type HandlerResponseFunc func(context.Context, http.ResponseWriter) context.Context
 
@@ -145,10 +160,24 @@ func (h createUserHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// step 1.4
+	for _, f := range h.hooks.beforeS {
+		var after ServiceResponseFunc
+		ctx, after = f(ctx, r)
+		if after != nil {
+			ServiceAfter(after)(h.hooks)
+		}
+	}
+
 	response, err := h.serviceWrap(ctx, request)
 	if err != nil {
 		// write to w
 		return
+	}
+
+	// step 1.5
+	for _, f := range h.hooks.afterS {
+		ctx = f(ctx, response)
 	}
 
 	// step 1.3
