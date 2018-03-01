@@ -58,3 +58,29 @@ https://github.com/go-kit/kit
     func encodeResponse(_ context.Context, w http.ResponseWriter, response interface{}) error {
     	return json.NewEncoder(w).Encode(response)
     }
+
+* It is not benchmark issue
+
+Benchmark of `gad`
+
+.code idea3/main_test.go /START-GAD OMIT/,/END-GAD OMIT/
+
+* It is not benchmark issue
+
+Benchmark of `gokit`
+
+.code idea3/main_test.go /START-KIT OMIT/,/END-KIT OMIT/
+
+* It is not benchmark issue
+
+Results
+
+    ❯ go test -bench=. ./examples/idea3
+    goos: darwin
+    goarch: amd64
+    pkg: github.com/go-gad/gad/examples/idea3
+    BenchmarkGad-8   	  200000	      5372 ns/op
+    BenchmarkKit-8   	  300000	      5489 ns/op
+    PASS
+    ok  	github.com/go-gad/gad/examples/idea3	2.873s
+
