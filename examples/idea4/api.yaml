@@ -1,0 +1,40 @@
+openapi: "3.0.0"
+info:
+  version: 1.0.0
+  title: Taxi API
+  description: API of taxi service
+
+servers:
+  - url: http://localhost:8089/
+
+security:
+  - cookieAuth: []
+  - bearerAuth: []
+
+paths:
+  /orders/{id}/assigned:
+    patch:
+      tags:
+        - Order
+      summary: Update order assignee
+      operationId: UpdateOrderAssigned
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: integer
+            required: true
+      requestBody:
+        content:
+          application/json:
+            schema:
+              description: Link data
+              type: object
+              properties:
+                driver_id:
+                  type: integer
+            example:
+              driver_id: 123
+      responses:
+        204:
+          description: Assignee is updated
