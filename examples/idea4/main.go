@@ -24,7 +24,3 @@ func main() {
 		log.Fatal(err)
 	}
 }
-
-func handlerUpdateOrderAssigned(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusNoContent)
-}
