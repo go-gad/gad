@@ -4,74 +4,89 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 
+	"github.com/go-kit/kit/endpoint"
+	httptransport "github.com/go-kit/kit/transport/http"
 	"github.com/pkg/errors"
 )
 
 type Client struct {
-	HttpClient *http.Client
-	Host       string
+	GetEmployeeEndpoint endpoint.Endpoint
+	Host                string
 }
 
-func NewClient(httpClient *http.Client, host string, options ...ClientOption) *Client {
+func NewHTTPClient(baseURL string, options ...ClientOption) (*Client, error) {
+	getEmployeeURL, err := url.Parse(baseURL)
+	if err != nil {
+		return nil, err
+	}
+	getEmployyEndpoint := httptransport.NewClient(
+		http.MethodGet,
+		getEmployeeURL,
+		encodeHTTPGetEmployeeRequest,
+		decodeHTTPGetEmployeeResponse,
+	).Endpoint()
+
 	client := &Client{
-		HttpClient: httpClient,
-		Host:       host,
+		Host:                baseURL,
+		GetEmployeeEndpoint: getEmployyEndpoint,
 	}
 	for _, o := range options {
 		o(client)
 	}
-	return client
+	return client, nil
 }
 
 type ClientOption func(c *Client)
 
 type RequestOption func(req *http.Request)
 
-// method name given from operationId parameter
-func (c *Client) GetEmployee(ctx context.Context, req GetEmployeeRequest, options ...RequestOption) (*Employee, error) {
-	httpReq, err := http.NewRequest(
-		http.MethodGet,
-		fmt.Sprintf("%s/v1/employee_by_phone/%s", c.Host, req.Phone),
-		nil,
-	)
-	if err != nil {
-		return nil, errors.Wrap(err, "couldn't create new request")
+func encodeHTTPGetEmployeeRequest(_ context.Context, r *http.Request, request interface{}) error {
+	getEmployeeReq := request.(GetEmployeeRequest)
+	r.URL.Path = fmt.Sprintf("/v1/employee_by_phone/%s", getEmployeeReq.Phone)
+	return nil
+}
+
+func decodeHTTPGetEmployeeResponse(_ context.Context, r *http.Response) (interface{}, error) {
+	if r.StatusCode == 204 {
+		return nil, &GetEmployeeResp204{}
 	}
-
-	httpReq.Header.Add("User-Agent", "begett/1.0")
-	httpReq.Header.Add("Accept", "application/json")
-
-	for _, r := range options {
-		r(httpReq)
+	if r.StatusCode == 404 {
+		var respErr *GetEmployeeResp400
+		err := json.NewDecoder(r.Body).Decode(respErr)
+		if err != nil {
+			return nil, errors.Wrap(err, "couldn't decode 404 error body")
+		}
+		return nil, respErr
 	}
-	
-	resp, err := c.HttpClient.Do(httpReq)
-
-	if err != nil {
-		return nil, errors.Wrap(err, "Transport layer error")
-	}
-
-	if resp.StatusCode == 200 {
-		//marshall
-		return &Employee{}, nil // Should we return &GetEmployeeResp200{} ?
-	}
-
-	if resp.StatusCode == 500 {
+	if r.StatusCode == 500 {
 		return nil, &GetEmployeeResp500{}
 	}
 
-	if resp.StatusCode == 404 {
-		return nil, &GetEmployeeResp400{
-			// fill params
-		}
+	if r.StatusCode != http.StatusOK {
+		return nil, errors.New(fmt.Sprintf("Unknown error: code: %s", r.Status))
 	}
 
-	if resp.StatusCode == 204 {
-		return nil, &GetEmployeeResp204{}
+	var resp GetEmployeeResponse
+	err := json.NewDecoder(r.Body).Decode(&resp)
+	return resp, err
+}
+
+// method name given from operationId parameter
+func (c *Client) GetEmployee(ctx context.Context, req GetEmployeeRequest, options ...RequestOption) (*Employee, error) {
+	resp, err := c.GetEmployeeEndpoint(ctx, req)
+
+	if err != nil {
+		return nil, err
 	}
 
-	return nil, errors.Wrap(err, "Unknown error")
+	response, ok := resp.(GetEmployeeResponse)
+	if !ok {
+		return nil, errors.New("couldn't cast GetEmployeeResponse")
+	}
+	return &response.Employee, nil // Should we return &GetEmployeeResp200{} ?
 }

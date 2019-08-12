@@ -2,17 +2,16 @@ package main
 
 import (
 	"context"
-	"net/http"
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/go-gad/gad/begett_example/service"
 )
 
 func main() {
-	// Some logic
-	httpClient := http.DefaultClient
-
-	client := service.NewClient(httpClient, "http://example.com")
+	client, err := service.NewHTTPClient("http://127.0.0.1")
+	if err != nil {
+		panic(spew.Sprintf("Client error: %#v", err))
+	}
 
 	employee, err := client.GetEmployee(
 		context.Background(),
