@@ -1,0 +1,86 @@
+openapi: "3.0"
+info:
+  description: "GES is a cache service for global_b2b employees to prevent highload request from rider_init and availability_orchestrator services"
+  version: "1.0.0"
+  title: "Global Employee Service"
+  termsOfService: "https://gett.com/ru/legal/terms-en/"
+  contact:
+    email: "ryabov@gett.com"
+  license:
+    name: "Gett License"
+    url: "http://gett.com"
+tags:
+  - name: "employee"
+    description: "employee information for rider_init service"
+paths:
+  "/v1/employee_by_phone/{phone}":
+    get:
+      tags:
+        - "employee"
+      summary: "Get employee info"
+      description: "Find employee information with GT start_session format"
+      operationId: "GetEmployee"
+      parameters:
+        - in: "path"
+          name: "phone"
+          description: "Employee phone. Example: +79165177332"
+          schema:
+            type: "string"
+            format: "phone"
+          required: true
+      responses:
+        '200':
+          description: "Employee found"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Employee"
+        '204':
+          description: "No content: no employee was found"
+        '404':
+          description: "Bad request"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  err_code:
+                    type: "integer"
+                  msg:
+                    type: "string"
+        '500':
+          description: "Internal server error"
+components:
+  schemas:
+    Company:
+      type: "object"
+      properties:
+        uuid:
+          type: "string"
+          format: "uuid"
+          description: "Company uuid"
+          example: "2b2b0aac-7357-4d8e-a98a-9ceaebb7f167"
+        name:
+          type: "string"
+          description: "Company name"
+          example: "Gett Systems RU"
+    Employee:
+      type: "object"
+      properties:
+        uuid:
+          type: "string"
+          format: "uuid"
+          description: "Employee uuid from global_b2b"
+          example: "ab7ac7bf-9f7f-4b37-8105-ced2f8408dbd"
+        email:
+          type: "string"
+          format: "email"
+          description: "Employee email"
+          example: "thekostya@gmail.com"
+        phone:
+          type: "string"
+          format: "phone"
+          description: "Employee phone"
+          example: "79165177931"
+        company:
+          $ref: "#/components/schemas/Company"
