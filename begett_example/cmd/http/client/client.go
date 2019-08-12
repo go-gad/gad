@@ -2,9 +2,12 @@ package main
 
 import (
 	"context"
+	"time"
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/go-gad/gad/begett_example/service"
+	"github.com/go-kit/kit/endpoint"
+	"github.com/sirupsen/logrus"
 )
 
 func main() {
@@ -12,6 +15,8 @@ func main() {
 	if err != nil {
 		panic(spew.Sprintf("Client error: %#v", err))
 	}
+
+	client.GetEmployeeEndpoint = logWrapper(client.GetEmployeeEndpoint)
 
 	employee, err := client.GetEmployee(
 		context.Background(),
@@ -37,4 +42,17 @@ func main() {
 	}
 
 	spew.Dump(employee)
+}
+
+func logWrapper(endpoint endpoint.Endpoint) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		logger := logrus.StandardLogger()
+		logger.SetFormatter(&logrus.JSONFormatter{})
+		logger.WithField("time", time.Now)
+		logger.Info("start request")
+		resp, err := endpoint(ctx, request)
+		time.Sleep(time.Second)
+		logger.Info("end request")
+		return resp, err
+	}
 }
