@@ -1,3 +1,5 @@
+// May be we should move it to separate client lib
+
 package service
 
 import (
@@ -27,10 +29,6 @@ func NewClient(httpClient *http.Client, host string, options ...ClientOption) *C
 type ClientOption func(c *Client)
 
 type RequestOption func(req *http.Request)
-
-type GetEmployeeRequest struct {
-	Phone string
-}
 
 // method name given from operationId parameter
 func (c *Client) GetEmployee(ctx context.Context, req GetEmployeeRequest, options ...RequestOption) (*Employee, error) {
@@ -66,7 +64,7 @@ func (c *Client) GetEmployee(ctx context.Context, req GetEmployeeRequest, option
 	}
 
 	if resp.StatusCode == 404 {
-		return nil, &GetEmployeeResp404{
+		return nil, &GetEmployeeResp400{
 			// fill params
 		}
 	}
@@ -76,25 +74,4 @@ func (c *Client) GetEmployee(ctx context.Context, req GetEmployeeRequest, option
 	}
 
 	return nil, errors.Wrap(err, "Unknown error")
-}
-
-type GetEmployeeResp500 struct{}
-
-func (e *GetEmployeeResp500) Error() string {
-	return "Internal Server error"
-}
-
-type GetEmployeeResp204 struct{}
-
-func (e *GetEmployeeResp204) Error() string {
-	return "Employee not found"
-}
-
-type GetEmployeeResp404 struct {
-	ErrCode int    `json:"err_code"`
-	Msg     string `json:"msg"`
-}
-
-func (e *GetEmployeeResp404) Error() string {
-	return fmt.Sprintf("Bad request: error %d: message: %s", e.ErrCode, e.Msg); // ? как выводить кастомные ошибки
 }

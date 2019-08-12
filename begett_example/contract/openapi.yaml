@@ -37,7 +37,7 @@ paths:
                 $ref: "#/components/schemas/Employee"
         '204':
           description: "No content: no employee was found"
-        '404':
+        '400':
           description: "Bad request"
           content:
             application/json:

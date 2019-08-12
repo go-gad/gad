@@ -1,11 +1,11 @@
 package main
 
 import (
-	"autogett/service"
 	"context"
 	"net/http"
 
 	"github.com/davecgh/go-spew/spew"
+	"github.com/go-gad/gad/begett_example/service"
 )
 
 func main() {
@@ -26,7 +26,7 @@ func main() {
 		if ok {
 			panic(internalServerError)
 		}
-		badRequest, ok := err.(*service.GetEmployeeResp404)
+		badRequest, ok := err.(*service.GetEmployeeResp400)
 		if ok {
 			panic(badRequest.Msg)
 		}
