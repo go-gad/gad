@@ -1,51 +1,67 @@
 package service
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 
+	"github.com/go-kit/kit/endpoint"
 	httptransport "github.com/go-kit/kit/transport/http"
 	"github.com/gorilla/mux"
 	"golang.org/x/exp/errors"
 )
 
+// IService - implement business logic interface
 type IService interface {
 	GetEmployee(ctx context.Context, phone string) (Employee, error)
 }
 
 func NewRouter(svc IService, options ...httptransport.ServerOption) *mux.Router {
 	router := mux.NewRouter()
+
 	endpoints := MakeEndoints(svc)
 
-	router.Methods(http.MethodGet).Path("/v1/employee_by_phone/{phone}").Handler(httptransport.NewServer(
-		endpoints.GetEmployeeEndpoint,
-		decodeGetEmployeeRequest,
-		encodeResponse,
-		options...,
-	))
+	// GetEmployee
+	{
+		getEmployeeHandler := MakeGetEmployeeHandler(endpoints.GetEmployeeEndpoint, options...)
+		r := router.NewRoute()
+		r.Name("GetEmployee")
+		r.Methods(http.MethodGet)
+		r.Path("/v1/employee_by_phone/{phone}")
+		r.Handler(getEmployeeHandler)
+	}
 
 	return router
 }
 
-func NewCustomRouter(svc IService, dec httptransport.DecodeRequestFunc, enc httptransport.EncodeResponseFunc, options ...httptransport.ServerOption) *mux.Router {
-	router := mux.NewRouter()
-	endpoints := MakeEndoints(svc)
+func AddGetEmployeeCustomRouter(r *mux.Router, handler http.Handler) *mux.Router {
+	route := r.NewRoute()
+	route.Methods(http.MethodGet)
+	route.Path("/v1/employee_by_phone/{phone}")
+	route.Handler(handler)
+	return r
+}
 
-	router.Methods(http.MethodGet).Path("/v1/employee_by_phone/{phone}").Handler(httptransport.NewServer(
-		endpoints.GetEmployeeEndpoint,
+func MakeGetEmployeeHandler(ep endpoint.Endpoint, options ...httptransport.ServerOption) *httptransport.Server {
+	return httptransport.NewServer(
+		ep,
+		DecodeGetEmployeeRequest,
+		EncodeResponse,
+		options...,
+	)
+}
+
+func MakeGetEmployeeCustomHandler(endpoint endpoint.Endpoint, dec httptransport.DecodeRequestFunc, enc httptransport.EncodeResponseFunc, options ...httptransport.ServerOption) *httptransport.Server {
+	return httptransport.NewServer(
+		endpoint,
 		dec,
 		enc,
 		options...,
-	))
-
-	return router
+	)
 }
 
-func decodeGetEmployeeRequest(_ context.Context, r *http.Request) (request interface{}, err error) {
+func DecodeGetEmployeeRequest(_ context.Context, r *http.Request) (request interface{}, err error) {
 	phone, ok := mux.Vars(r)["phone"]
 	if !ok {
 		return nil, &GetEmployeeResp400{
@@ -56,17 +72,7 @@ func decodeGetEmployeeRequest(_ context.Context, r *http.Request) (request inter
 	return GetEmployeeRequest{Phone: phone}, nil
 }
 
-func encodeRequest(_ context.Context, req *http.Request, request interface{}) error {
-	var buf bytes.Buffer
-	err := json.NewEncoder(&buf).Encode(request)
-	if err != nil {
-		return err
-	}
-	req.Body = ioutil.NopCloser(&buf)
-	return nil
-}
-
-func encodeResponse(ctx context.Context, w http.ResponseWriter, response interface{}) error {
+func EncodeResponse(ctx context.Context, w http.ResponseWriter, response interface{}) error {
 	if e, ok := response.(error); ok && e != nil && e.Error() != "" {
 		// Not a Go kit transport error, but a business-logic error.
 		// Provide those as HTTP errors.

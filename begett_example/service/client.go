@@ -16,34 +16,47 @@ import (
 
 type Client struct {
 	GetEmployeeEndpoint endpoint.Endpoint
-	Host                string
+	Host                *url.URL
 }
 
 func NewHTTPClient(baseURL string, options ...ClientOption) (*Client, error) {
-	getEmployeeURL, err := url.Parse(baseURL)
+	host, err := url.Parse(baseURL)
 	if err != nil {
 		return nil, err
 	}
-	getEmployyEndpoint := httptransport.NewClient(
-		http.MethodGet,
-		getEmployeeURL,
-		encodeHTTPGetEmployeeRequest,
-		decodeHTTPGetEmployeeResponse,
-	).Endpoint()
-
 	client := &Client{
-		Host:                baseURL,
-		GetEmployeeEndpoint: getEmployyEndpoint,
+		Host: host,
 	}
+
+	client.initGetEmployeeEndpoint()
+
 	for _, o := range options {
 		o(client)
 	}
+
 	return client, nil
 }
 
 type ClientOption func(c *Client)
 
 type RequestOption func(req *http.Request)
+
+func (c *Client) initGetEmployeeEndpoint() {
+	c.GetEmployeeEndpoint = NewGetEmployeeEndpoint(c.Host)
+}
+
+func NewGetEmployeeEndpoint(url *url.URL, options ...httptransport.ClientOption) endpoint.Endpoint {
+	return httptransport.NewClient(
+		http.MethodGet,
+		url,
+		encodeHTTPGetEmployeeRequest,
+		decodeHTTPGetEmployeeResponse,
+	).Endpoint()
+}
+
+func NewGetEmployeeCustomEndpoint(url *url.URL, enc httptransport.EncodeRequestFunc, dec httptransport.DecodeResponseFunc, options ...httptransport.ClientOption) endpoint.Endpoint {
+	return httptransport.NewClient(http.MethodGet, url, enc, dec).Endpoint()
+}
 
 func encodeHTTPGetEmployeeRequest(_ context.Context, r *http.Request, request interface{}) error {
 	getEmployeeReq := request.(GetEmployeeRequest)
