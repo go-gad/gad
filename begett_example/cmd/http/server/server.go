@@ -9,6 +9,7 @@ import (
 )
 
 func main() {
+	// Тут используется рукописный сервис, который должен реализовать интерфейс service.IService
 	businessLogicSvc := &business_logic.Service{}
 
 	router := service.NewRouter(businessLogicSvc)
